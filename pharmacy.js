@@ -7,60 +7,73 @@ export class Drug {
 }
 
 export class Pharmacy {
-  constructor(drugs = []) {
-    this.drugs = drugs;
-  }
-  updateBenefitValue() {
-    for (var i = 0; i < this.drugs.length; i++) {
-      if (
-        this.drugs[i].name != "Herbal Tea" &&
-        this.drugs[i].name != "Fervex"
-      ) {
-        if (this.drugs[i].benefit > 0) {
-          if (this.drugs[i].name != "Magic Pill") {
-            this.drugs[i].benefit = this.drugs[i].benefit - 1;
-          }
-        }
-      } else {
-        if (this.drugs[i].benefit < 50) {
-          this.drugs[i].benefit = this.drugs[i].benefit + 1;
-          if (this.drugs[i].name == "Fervex") {
-            if (this.drugs[i].expiresIn < 11) {
-              if (this.drugs[i].benefit < 50) {
-                this.drugs[i].benefit = this.drugs[i].benefit + 1;
-              }
-            }
-            if (this.drugs[i].expiresIn < 6) {
-              if (this.drugs[i].benefit < 50) {
-                this.drugs[i].benefit = this.drugs[i].benefit + 1;
-              }
-            }
-          }
-        }
-      }
-      if (this.drugs[i].name != "Magic Pill") {
-        this.drugs[i].expiresIn = this.drugs[i].expiresIn - 1;
-      }
-      if (this.drugs[i].expiresIn < 0) {
-        if (this.drugs[i].name != "Herbal Tea") {
-          if (this.drugs[i].name != "Fervex") {
-            if (this.drugs[i].benefit > 0) {
-              if (this.drugs[i].name != "Magic Pill") {
-                this.drugs[i].benefit = this.drugs[i].benefit - 1;
-              }
-            }
-          } else {
-            this.drugs[i].benefit =
-              this.drugs[i].benefit - this.drugs[i].benefit;
-          }
-        } else {
-          if (this.drugs[i].benefit < 50) {
-            this.drugs[i].benefit = this.drugs[i].benefit + 1;
-          }
-        }
-      }
-    }
+   static SignedDrug = Object.freeze({ HERBT : "Herbal Tea",
+                                       FERX : "Fervex",
+                                       MPILL : "Magic Pill",
+                                       max_benef : 50,
+                                       min_benef : 0,
+                                       includes : (val) => {
+                                                            let keys = Object.keys(Pharmacy.SignedDrug)
+                                                            for (let key in keys) {
+                                                                if (Pharmacy.SignedDrug[keys[key]] == val) {
+                                                                    return true;
+                                                               }
+                                                           }
+                                                            return false;
+                                                        }
+                                    })
 
-    return this.drugs;
+  constructor(drugs = []) {
+        this.drugs = drugs;
+
+   };
+    
+  drugSignedLowerBenefit(drug) {
+      if (drug.benefit == 0 ||
+            Pharmacy.SignedDrug.includes(drug.name) == true) {
+            return ;
+        }
+        drug.benefit -= 1;
   }
+
+  drugSignedIncreaseBenefit(drug) {
+        const noneIncrease = [Pharmacy.SignedDrug.HERBT, Pharmacy.SignedDrug.FERX];
+    
+        if (drug.benefit == Pharmacy.SignedDrug.max_benef ||
+            noneIncrease.includes(drug.name) == false) {
+            return;
+        }
+        if (drug.name == Pharmacy.SignedDrug.FERX) {
+            drug.benefit += (drug.benefit < Pharmacy.SignedDrug.max_benef && drug.expiresIn < 11 ? 1 : 0);
+            drug.benefit += (drug.benefit < Pharmacy.SignedDrug.max_benef && drug.expiresIn < 6 ? 1 : 0);
+        }
+        drug.benefit += (drug.benefit < Pharmacy.SignedDrug.max_benef ? 1 : 0); 
+  }
+    
+  drugSignedExpire(drug) {
+        if (drug.name == Pharmacy.SignedDrug.MPILL) {
+            return ;
+        }
+        drug.expiresIn -= 1;
+        if (drug.expiresIn >= 0)
+          return ;
+        if (drug.name == Pharmacy.SignedDrug.FERX) {
+            drug.benefit -= drug.benefit;
+            return ;
+        }
+        if (drug.name == Pharmacy.SignedDrug.HERBT) {
+            drug.benefit += (drug.benefit < Pharmacy.SignedDrug.max_benef ? 1 : 0);
+            return 
+        }
+        drug.benefit -= (drug.benefit > Pharmacy.SignedDrug.min_benef ? 1 : 0);
+  }
+
+  updateBenefitValue() {
+        for (let i = 0; i < this.drugs.length; i++) {
+            this.drugSignedLowerBenefit(this.drugs[i]);
+            this.drugSignedIncreaseBenefit(this.drugs[i]);
+            this.drugSignedExpire(this.drugs[i]);
+        }    
+        return this.drugs;
+    }
 }
